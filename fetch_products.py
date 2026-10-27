@@ -64,8 +64,11 @@ def parse(data, affid):
         price = amount(b, "flipkartSpecialPrice", "flipkartSellingPrice", "sellingPrice")
         if not (b.get("title") and img and price):
             continue
+        t = b["title"].strip()
+        if len(t) > 90:
+            t = t[:90].rsplit(" ", 1)[0].rstrip(",(-") + "…"
         out.append({
-            "title": b["title"][:110],
+            "title": t,
             "brand": b.get("productBrand") or "",
             "image": https(img),
             "price": price,
