@@ -64,7 +64,7 @@ GUIDES = [
             ("Are cheap kitchen gadgets worth buying?", "Yes, for simple tools such as spatulas, strainers and measuring spoons, where a basic version works as well as an expensive one. Be more careful with anything that has blades, springs or hinges, because these are where cheap versions fail."),
             ("How do I know if a steel tool is food grade?", "Look for the grade in the listing, such as 304 or 18/8 stainless steel. If a listing only says 'stainless steel' with no detail, check the reviews for rust reports."),
             ("Should I wash new silicone and plastic tools before use?", "Yes. Wash them in hot water with dish soap, and let them air dry. If a strong chemical smell remains, return the item."),
-            ("Do the prices on this page stay the same?", "No. Flipkart prices change often, especially during sale events. This page does not list prices for that reason, so check the live price on the product page."),
+            ("Do the prices on this page stay the same?", "No. Flipkart prices change often, especially during sale events. The example prices shown here are refreshed daily and dated, but always check the live price on Flipkart before you buy."),
         ],
     },
     {
@@ -73,7 +73,7 @@ GUIDES = [
         "desc": "Six step-up kitchen gadgets for around ₹1000: what each one does, who needs it, and the specs worth checking before you order.",
         "intro": [
             "A budget near ₹1000 lets you move from basic tools to small appliances and sturdier cookware that can last for years. The risk is also higher, because a poor appliance costs more to get wrong. This guide covers six categories that are popular in Indian homes and explains the specs that matter.",
-            "We do not list prices or claim to have tested each product. Instead we focus on what to verify in the product listing: wattage, capacity, materials, warranty and whether spare parts are available.",
+            "We do not claim to have tested each product. Instead we focus on what to verify in the product listing: wattage, capacity, materials, warranty and whether spare parts are available. Example listings and prices come from Flipkart and are refreshed daily.",
         ],
         "sections": [
             {"h": "How to choose small appliances and cookware", "ul": [
@@ -206,7 +206,7 @@ GUIDES = [
         "desc": "How to choose a leak-proof lunch box, tiffin or steel bottle for school and office, including materials, insulation and cleaning.",
         "intro": [
             "A good lunch box keeps food fresh and leak-free and is easy to clean. A good bottle keeps water cold or hot and does not rust. For both, the material matters most, followed by the seal and the size.",
-            "This guide covers lunch boxes, tiffin carriers and bottles, with a checklist for each. We do not list prices because they change often on Flipkart. Check the live price on the product page.",
+            "This guide covers lunch boxes, tiffin carriers and bottles, with a checklist for each. Example prices are pulled from Flipkart daily, but they change often, so check the live price on the product page.",
         ],
         "sections": [
             {"h": "Choosing the right material", "ul": [
@@ -265,7 +265,7 @@ GUIDES = [
         "desc": "Which air fryer accessories are worth buying, how to match them to your basket size, and the safety rules for liners, racks and moulds.",
         "intro": [
             "An air fryer cooks well out of the box, but a few inexpensive accessories open up more recipes: baking, grilling, skewers and easy clean-up. Most accessories are simple, but they must match your basket size and be rated for high heat.",
-            "This guide lists the accessories that tend to be worth buying and explains how to check them against your model. We do not list prices because they change often. Check the live price on the product page.",
+            "This guide lists the accessories that tend to be worth buying and explains how to check them against your model. Example prices are pulled from Flipkart daily, but they change often, so check the live price on the product page.",
         ],
         "sections": [
             {"h": "Match accessories to your air fryer", "ul": [
