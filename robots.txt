@@ -1,0 +1,3 @@
+User-agent: *
+Allow: /
+Sitemap: https://amittanwar-7.github.io/smartkitchen-picks/sitemap.xml
