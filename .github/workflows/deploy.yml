@@ -27,7 +27,6 @@ jobs:
       - run: pip install -r requirements.txt
       - name: Fetch products from Flipkart Affiliate API
         env:
-          FK_AFFILIATE_ID: amittanwa1
           FK_AFFILIATE_TOKEN: ${{ secrets.FK_AFFILIATE_TOKEN }}
         run: python fetch_products.py
       - run: python build.py
