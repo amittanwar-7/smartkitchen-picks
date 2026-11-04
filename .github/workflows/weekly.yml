@@ -18,9 +18,9 @@ jobs:
         with:
           python-version: "3.12"
       - run: pip install -r requirements.txt
-      - name: Write new articles with Gemini
+      - name: Write new articles with Groq
         env:
-          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
         run: python weekly_articles.py
       - name: Verify the site still builds
         run: python build.py
