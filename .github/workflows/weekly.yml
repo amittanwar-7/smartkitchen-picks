@@ -33,5 +33,6 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add generated.json
           git commit -m "Add weekly articles"
-          git push
+          for i in 1 2 3 4; do git push && ok=1 && break; sleep 20; done
+          [ "$ok" = 1 ]
           gh workflow run deploy.yml
