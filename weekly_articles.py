@@ -1,19 +1,17 @@
-"""Weekly job: pick new topics from Google autosuggest, write articles with Groq,
-append them to generated.json. Runs in GitHub Actions with the GROQ_API_KEY secret."""
-import json, os, re, sys, time, urllib.error, urllib.parse, urllib.request
+"""Weekly job: take the next unpublished topics from content_plan.py, write them with Groq,
+check quality, and append them to generated.json. Runs in GitHub Actions with the GROQ_API_KEY secret."""
+import datetime, json, os, re, sys, time, urllib.error, urllib.parse, urllib.request
 from pathlib import Path
 
 from clusters import CLUSTERS
 from content import GUIDES
+from content_plan import PLAN
 
 ROOT = Path(__file__).parent
 GEN = ROOT / "generated.json"
 COUNT = int(os.environ.get("ARTICLE_COUNT", "3"))
 MODELS = ["llama-3.3-70b-versatile", "openai/gpt-oss-120b", "llama-3.1-8b-instant"]
-KEY = os.environ["GROQ_API_KEY"]
-SEEDS = ["badminton racket for", "badminton shoes for", "badminton shuttlecock", "badminton grip", "badminton string",
-         "how to play badminton", "cricket bat for", "cricket bat size", "kashmir willow bat", "english willow bat",
-         "cricket batting gloves", "cricket helmet for", "cricket kit for", "tennis ball cricket bat", "how to knock in"]
+KEY = os.environ.get("GROQ_API_KEY", "")
 
 
 def http(url, data=None, headers=None):
@@ -21,13 +19,6 @@ def http(url, data=None, headers=None):
     with urllib.request.urlopen(req, timeout=120) as r:
         return r.read().decode("utf-8", "ignore")
 
-
-def suggest(q):
-    try:
-        u = "https://suggestqueries.google.com/complete/search?client=firefox&hl=en&gl=in&q=" + urllib.parse.quote(q)
-        return json.loads(http(u))[1]
-    except Exception:
-        return []
 
 
 def pick_models():
@@ -62,69 +53,142 @@ def chat(messages, max_tokens=6000):
         time.sleep(20 * (i + 1))
     return ""
 
+
 def load_gen():
     return json.loads(GEN.read_text(encoding="utf-8")) if GEN.exists() else []
 
 
-def existing_text():
-    return " ".join(c["title"].lower() + " " + c["slug"] for c in CLUSTERS + load_gen())
+def slugify(s):
+    return re.sub(r"-+", "-", re.sub(r"[^a-z0-9]+", "-", s.lower())).strip("-")[:60].strip("-")
 
 
-def pick_topics(n):
-    cands = []
-    for s in SEEDS:
-        cands += suggest(s)
-        time.sleep(0.3)
-    have = existing_text()
-    cands = [c for c in dict.fromkeys(cands) if len(c.split()) >= 3 and c.lower() not in have]
-    pillars = ", ".join(g["slug"] for g in GUIDES)
-    out = chat([{"role": "user", "content":
-        f"From these Google India autosuggest queries about cricket and badminton gear, choose {n} specific, helpful, "
-        f"non-overlapping topics for buying-guide or how-to articles for Indian players and parents. Skip anything unsafe, "
-        f"brand-specific, about players/matches/news, or already covered by these existing titles: {existing_text()[:1500]}\n\nQueries:\n" + "\n".join(cands[:150]) +
-        f"\n\nReturn ONLY a JSON array of {n} objects: {{\"topic\": str, \"pillar\": one of [{pillars}]}}."}], 800)
-    m = re.search(r"\[.*\]", out, re.S)
-    return json.loads(m.group(0))[:n] if m else []
+def next_topics(n, published):
+    return [p for p in PLAN if slugify(p[1]) not in published][:n]
 
 
-PROMPT = """Write a helpful, original article for an Indian affiliate site about cricket and badminton equipment.
-Topic: {topic}
-Rules: 700-1000 words, plain simple English, India-relevant. Cover how to choose or do it, what to check, mistakes, safety/care.
-Do NOT invent prices, product specs, ratings, brand claims, or claim personal testing. No product names. Use approximate ranges only when they are widely accepted.
-Return ONLY JSON with keys:
-slug (lowercase-hyphens, ends with -india or similar, max 60 chars), title (max 70 chars), desc (max 155 chars),
-intro (list of 2 paragraphs), sections (list of 3-4 objects {{"h": str, "p": [paragraphs]}} and/or {{"h": str, "ul": [bullets]}}),
-faq (list of 3-4 [question, answer] pairs), cta ([button label, short Flipkart search query])."""
+# Writing rules follow Google's "helpful, reliable, people-first content" guidance and its
+# spam policies (scaled content abuse, thin affiliate pages): every page must answer the
+# reader's question better than a product list, with no invented facts or fake experience.
+PROMPT = """You are an experienced Indian sports-equipment coach writing for "Bat & Racket", a site that helps
+Indian beginners, parents and club players choose cricket and badminton gear.
+
+Write ONE article.
+Title: {title}
+Primary search phrase: "{keyword}"
+Article type: {kind} ({kind_help})
+Product types we will show (in this order): {products}
+Related pages already on the site (do NOT repeat their content; the article will link to them): {related}
+
+Quality rules (very important):
+- Write for a real person in India with this exact question. Answer it directly in the first paragraph.
+- 900-1300 words of genuinely useful, specific guidance: decision criteria, who should choose what, sizes/weights/
+  levels where widely accepted, step-by-step instructions for how-tos, common mistakes, safety and care.
+- Use the primary search phrase naturally in the first paragraph and in one heading. Never keyword-stuff.
+- Plain, friendly Indian English. Short paragraphs. No fluff, no filler intros, no "In conclusion".
+- Do NOT claim personal testing or experiences ("we tested", "I used"). Do NOT invent prices, specs, ratings,
+  statistics, studies or quotes. Do NOT name brands or specific product models. Budget amounts in the title are fine.
+- Add one comparison table where it genuinely helps (e.g. by level, age, size, material).
+- Stay strictly on this topic; do not drift into the related pages' topics.
+
+Return ONLY valid JSON with keys:
+desc: meta description, 140-155 chars, includes the primary phrase
+intro: list of 2 short paragraphs
+sections: list of 4-6 objects, each {{"h": heading, "p": [paragraphs]}} and optionally "ul": [bullets]
+   and/or "table": [[header cells], [row cells], ...] (max one table in the whole article)
+picks: list with exactly {n} objects in the same order as the product types, each
+   {{"who": one sentence on who this option suits, "check": [3 short things to check before buying]}}
+faq: list of 4 [question, answer] pairs that real buyers ask (answers 2-4 sentences)"""
+
+KIND_HELP = {"buying": "help the reader choose the right product", "howto": "practical step-by-step guide",
+             "explain": "explain and compare clearly, then recommend who should pick what"}
+BANNED = re.compile(r"\bwe (have )?tested\b|\bi (have )?(tested|used)\b|our test|hands-on|as an ai|in conclusion|"
+                    r"\bstudies show\b|\baccording to (a )?(recent )?(study|survey)", re.I)
 
 
-def valid(a):
+def words(a):
+    txt = " ".join(a["intro"])
+    for s in a["sections"]:
+        txt += " " + " ".join(s.get("p", []) + s.get("ul", []))
+        txt += " " + " ".join(" ".join(map(str, r)) for r in s.get("table", []))
+    txt += " " + " ".join(q + " " + x for q, x in a["faq"])
+    return txt
+
+
+def valid(a, n):
     try:
-        return (re.fullmatch(r"[a-z0-9-]{5,70}", a["slug"]) and a["title"] and a["desc"] and len(a["intro"]) >= 1
-                and len(a["sections"]) >= 3 and len(a["faq"]) >= 3 and len(a["cta"]) == 2
-                and all(len(f) == 2 for f in a["faq"])
-                and sum(len(" ".join(s.get("p", []) + s.get("ul", [])).split()) for s in a["sections"]) >= 450)
-    except Exception:
+        txt = words(a)
+        ok = (a["desc"] and 4 <= len(a["sections"]) <= 7 and len(a["faq"]) >= 3 and all(len(f) == 2 for f in a["faq"])
+              and len(a["picks"]) == n and all(p.get("who") and len(p.get("check", [])) >= 2 for p in a["picks"])
+              and len(txt.split()) >= 750)
+        if not ok:
+            print("  failed structure/length check; words =", len(txt.split()))
+            return False
+        if BANNED.search(txt + json.dumps(a["picks"])):
+            print("  failed: banned phrase:", BANNED.search(txt + json.dumps(a["picks"])).group(0))
+            return False
+        return True
+    except Exception as ex:
+        print("  failed validation:", ex)
         return False
 
 
-def main():
-    gen = load_gen()
-    slugs = {c["slug"] for c in CLUSTERS + gen} | {g["slug"] for g in GUIDES}
-    added = 0
-    for t in pick_topics(COUNT):
-        out = chat([{"role": "user", "content": PROMPT.format(topic=t["topic"])}])
+def clean_table(t):
+    rows = [[str(c) for c in r] for r in t if isinstance(r, list) and r]
+    return rows if len(rows) >= 2 else None
+
+
+def write(topic, related):
+    title, keyword, pillar, kind, products = topic
+    msg = PROMPT.format(title=title, keyword=keyword, kind=kind, kind_help=KIND_HELP[kind], n=len(products),
+                        products="; ".join(lbl for lbl, _ in products), related="; ".join(related))
+    for attempt in range(2):
+        out = chat([{"role": "user", "content": msg}], 7000)
         m = re.search(r"\{.*\}", out, re.S)
         try:
             a = json.loads(m.group(0))
         except Exception:
-            print("bad JSON for", t["topic"]); continue
-        if not valid(a) or a["slug"] in slugs:
-            print("rejected:", t["topic"]); continue
-        a["pillar"] = t["pillar"] if t["pillar"] in {g["slug"] for g in GUIDES} else GUIDES[0]["slug"]
-        a["cta"] = [str(a["cta"][0]), str(a["cta"][1])]
-        gen.append(a); slugs.add(a["slug"]); added += 1
-        print("added:", a["title"])
-    print("articles added:", added, flush=True)
+            print("  bad JSON (attempt", attempt + 1, ")"); continue
+        if valid(a, len(products)):
+            secs = []
+            for s in a["sections"]:
+                sec = {"h": str(s["h"]), "p": [str(x) for x in s.get("p", [])]}
+                if s.get("ul"):
+                    sec["ul"] = [str(x) for x in s["ul"]]
+                if s.get("table") and clean_table(s["table"]):
+                    sec["table"] = clean_table(s["table"])
+                secs.append(sec)
+            return {
+                "slug": slugify(keyword), "title": title, "desc": str(a["desc"])[:160], "keyword": keyword,
+                "pillar": pillar, "date": datetime.date.today().isoformat(),
+                "intro": [str(x) for x in a["intro"]][:3], "sections": secs,
+                "picks": [{"name": lbl, "query": q, "who": str(p["who"]), "check": [str(x) for x in p["check"]][:4]}
+                          for (lbl, q), p in zip(products, a["picks"])],
+                "faq": [[str(q), str(x)] for q, x in a["faq"]][:5],
+                "cta": [f"See {products[0][0].lower()} on Flipkart", products[0][1]],
+            }
+    return None
+
+
+def main():
+    gen = load_gen()
+    published = {c["slug"] for c in CLUSTERS + gen} | {g["slug"] for g in GUIDES}
+    guide_titles = {g["slug"]: g["title"] for g in GUIDES}
+    todo = next_topics(COUNT + 2, published)  # a couple of spares in case one fails the quality check
+    if not todo:
+        print("::warning::content_plan.py is finished - add new topics to keep publishing"); return
+    added = 0
+    for t in todo:
+        if added >= COUNT:
+            break
+        print("writing:", t[0], flush=True)
+        related = [guide_titles[t[2]]] + [c["title"] for c in CLUSTERS + gen if c["pillar"] == t[2]][-8:]
+        a = write(t, related)
+        if not a:
+            print("  skipped (will retry next week)"); continue
+        gen.append(a); published.add(a["slug"]); added += 1
+        print("  added:", a["slug"], flush=True)
+    left = len(next_topics(10**6, published))
+    print(f"articles added: {added}; plan topics remaining: {left}", flush=True)
     if added:
         GEN.write_text(json.dumps(gen, indent=1, ensure_ascii=False) + "\n", encoding="utf-8")
     else:

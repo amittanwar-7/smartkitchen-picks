@@ -221,12 +221,24 @@ def render_cluster(c):
         secs += f"<h2>{e(s['h'])}</h2>" + "".join(f"<p>{e(x)}</p>" for x in s.get("p", []))
         if s.get("ul"):
             secs += ul(s["ul"])
+        if s.get("table"):
+            head, *rows = s["table"]
+            secs += ("<table><tr>" + "".join(f"<th>{e(h)}</th>" for h in head) + "</tr>"
+                     + "".join("<tr>" + "".join(f"<td>{e(x)}</td>" for x in r) + "</tr>" for r in rows) + "</table>")
+    if c.get("picks"):
+        shop = "<h2>Options to consider</h2>"
+        for pk in c["picks"]:
+            shop += (f'<h3>{e(pk["name"])}</h3><p>{e(pk["who"])}</p><p class="label">Check before you buy:</p>{ul(pk["check"])}'
+                     f'{products_html(pk["query"])}<p>{buttons(pk["query"], "See options on Flipkart")}</p>')
+    else:
+        shop = f'{products_html(c["cta"][1])}<p>{buttons(c["cta"][1], c["cta"][0])}</p>'
+    date = c.get("date", TODAY)
     faq = "".join(f"<h3>{e(q)}</h3><p>{e(a)}</p>" for q, a in c["faq"])
     sibs = [o for o in CLUSTERS if o["pillar"] == c["pillar"] and o is not c]
     more = "".join(f'<li><a href="{BASE}/{o["slug"]}.html">{e(o["title"])}</a></li>' for o in sibs)
     body = (f'<p class="crumbs"><a href="{BASE}/">Home</a> › <a href="{BASE}/{pillar["slug"]}.html">{e(pillar["title"])}</a> › {e(c["title"])}</p>'
-            f'<h1>{e(c["title"])}</h1><p class="meta">By {e(cfg["site_name"])} · Last updated {TODAY}</p>'
-            f'{intro}{secs}{products_html(c["cta"][1])}<p>{buttons(c["cta"][1], c["cta"][0])}</p>'
+            f'<h1>{e(c["title"])}</h1><p class="meta">By {e(cfg["site_name"])} · Published {date}</p>'
+            f'{intro}{secs}{shop}'
             f'<h2>Frequently asked questions</h2>{faq}'
             f'<h2>Read the full guide</h2><ul><li><a href="{BASE}/{pillar["slug"]}.html">{e(pillar["title"])}</a></li></ul>'
             + (f"<h2>Related articles</h2><ul>{more}</ul>" if more else "")
@@ -237,7 +249,7 @@ def render_cluster(c):
             {"@type": "ListItem", "position": 2, "name": pillar["title"], "item": f"{BASE}/{pillar['slug']}.html"},
             {"@type": "ListItem", "position": 3, "name": c["title"], "item": curl}]},
         {"@context": "https://schema.org", "@type": "Article", "headline": c["title"], "description": c["desc"],
-         "image": f"{BASE}/og-image.png", "datePublished": TODAY, "dateModified": TODAY, "inLanguage": "en-IN",
+         "image": f"{BASE}/og-image.png", "datePublished": date, "dateModified": date, "inLanguage": "en-IN",
          "mainEntityOfPage": curl, "author": {"@type": "Organization", "name": cfg["site_name"], "url": f"{BASE}/"},
          "publisher": {"@type": "Organization", "name": cfg["site_name"], "logo": {"@type": "ImageObject", "url": f"{BASE}/og-image.png"}}},
         {"@context": "https://schema.org", "@type": "FAQPage", "mainEntity": [

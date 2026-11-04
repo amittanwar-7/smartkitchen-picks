@@ -26,6 +26,9 @@ def load_env():
 
 def queries():
     qs = [x["query"] for g in GUIDES for x in g["picks"]] + [c["cta"][1] for c in CLUSTERS]
+    gen = ROOT / "generated.json"
+    for a in json.loads(gen.read_text(encoding="utf-8")) if gen.exists() else []:
+        qs += [p["query"] for p in a.get("picks", [])] or [a["cta"][1]]
     return list(dict.fromkeys(qs))
 
 
