@@ -35,13 +35,15 @@ def chat(messages, max_tokens=4000):
     hdr = {"Authorization": "Bearer " + TOKEN, "Content-Type": "application/json",
            "Accept": "application/vnd.github+json", "X-GitHub-Api-Version": "2022-11-28"}
     for i in range(3):
+        raw = ""
         try:
-            return json.loads(http("https://models.github.ai/inference/chat/completions", body, hdr))["choices"][0]["message"]["content"]
+            raw = http("https://models.github.ai/inference/chat/completions", body, hdr)
+            return json.loads(raw)["choices"][0]["message"]["content"]
         except urllib.error.HTTPError as ex:
             print("::error::model call failed:", ex.code, ex.read().decode("utf-8", "ignore")[:300].replace("\n", " "), flush=True)
             time.sleep(10 * (i + 1))
         except Exception as ex:
-            print("::error::model call failed:", str(ex)[:300], flush=True)
+            print("::error::model call failed:", str(ex)[:200], "| body:", raw[:200].replace("\n", " "), flush=True)
             time.sleep(10 * (i + 1))
     return ""
 
