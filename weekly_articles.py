@@ -9,7 +9,7 @@ from content import GUIDES
 ROOT = Path(__file__).parent
 GEN = ROOT / "generated.json"
 COUNT = int(os.environ.get("ARTICLE_COUNT", "3"))
-MODEL = os.environ.get("MODEL", "gemini-2.5-flash")
+MODELS = ["gemini-3.6-flash", "gemini-3.5-flash-lite", "gemini-3.1-flash-lite"]
 KEY = os.environ["GEMINI_API_KEY"]
 SEEDS = ["best lunch box for", "how to clean", "steel bottle", "air fryer", "kitchen storage",
          "vegetable chopper", "kitchen gadgets under", "pressure cooker", "tawa", "masala box",
@@ -36,8 +36,8 @@ def chat(messages, max_tokens=8000):
         "generationConfig": {"temperature": 0.7, "maxOutputTokens": max_tokens},
     }).encode()
     hdr = {"x-goog-api-key": KEY, "Content-Type": "application/json"}
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/{MODEL}:generateContent"
-    for i in range(4):
+    for i in range(6):
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/{MODELS[i % len(MODELS)]}:generateContent"
         raw = ""
         try:
             raw = http(url, body, hdr)
