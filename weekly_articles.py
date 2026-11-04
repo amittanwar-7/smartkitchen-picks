@@ -1,6 +1,6 @@
 """Weekly job: pick new topics from Google autosuggest, write articles with GitHub Models,
 append them to generated.json. Runs in GitHub Actions with GITHUB_TOKEN (models: read)."""
-import json, os, re, sys, time, urllib.parse, urllib.request
+import json, os, re, sys, time, urllib.error, urllib.parse, urllib.request
 from pathlib import Path
 
 from clusters import CLUSTERS
@@ -37,8 +37,11 @@ def chat(messages, max_tokens=4000):
     for i in range(3):
         try:
             return json.loads(http("https://models.github.ai/inference/chat/completions", body, hdr))["choices"][0]["message"]["content"]
+        except urllib.error.HTTPError as ex:
+            print("model call failed:", ex.code, ex.read().decode("utf-8", "ignore")[:400], flush=True)
+            time.sleep(10 * (i + 1))
         except Exception as ex:
-            print("model call failed:", ex, file=sys.stderr)
+            print("model call failed:", ex, flush=True)
             time.sleep(10 * (i + 1))
     return ""
 
@@ -105,8 +108,11 @@ def main():
         a["cta"] = [str(a["cta"][0]), str(a["cta"][1])]
         gen.append(a); slugs.add(a["slug"]); added += 1
         print("added:", a["title"])
-    GEN.write_text(json.dumps(gen, indent=1, ensure_ascii=False), encoding="utf-8")
-    print("articles added:", added)
+    print("articles added:", added, flush=True)
+    if added:
+        GEN.write_text(json.dumps(gen, indent=1, ensure_ascii=False) + "\n", encoding="utf-8")
+    else:
+        sys.exit(1)
 
 
 if __name__ == "__main__":
