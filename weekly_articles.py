@@ -30,7 +30,23 @@ def suggest(q):
         return []
 
 
+def pick_models():
+    hdr = {"Authorization": "Bearer " + KEY, "User-Agent": "smartkitchen-bot/1.0"}
+    try:
+        ids = [m["id"] for m in json.loads(http("https://api.groq.com/openai/v1/models", None, hdr))["data"]]
+    except Exception as ex:
+        print("::warning::could not list models:", str(ex)[:150], flush=True)
+        return MODELS
+    ids = [i for i in ids if not re.search(r"whisper|guard|tts|orpheus|embed|safeguard|compound", i, re.I)]
+    print("available models:", ids, flush=True)
+    pref = [i for k in ("gpt-oss-120b", "70b", "120b", "llama", "qwen", "gpt-oss") for i in ids if k in i.lower()]
+    return list(dict.fromkeys(pref + ids)) or MODELS
+
+
 def chat(messages, max_tokens=6000):
+    global MODELS
+    if not getattr(chat, "ready", False):
+        MODELS, chat.ready = pick_models(), True
     hdr = {"Authorization": "Bearer " + KEY, "Content-Type": "application/json", "User-Agent": "smartkitchen-bot/1.0"}
     for i in range(6):
         body = json.dumps({"model": MODELS[i % len(MODELS)], "messages": messages,
