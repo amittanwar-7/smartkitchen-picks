@@ -187,6 +187,7 @@ def main():
             print("  skipped (will retry next week)"); continue
         gen.append(a); published.add(a["slug"]); added += 1
         print("  added:", a["slug"], flush=True)
+        time.sleep(45)  # stay under Groq's free tokens-per-minute limit
     left = len(next_topics(10**6, published))
     print(f"articles added: {added}; plan topics remaining: {left}", flush=True)
     if added:
