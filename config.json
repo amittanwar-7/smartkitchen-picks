@@ -1,6 +1,7 @@
 {
-  "site_name": "SmartKitchen Picks India",
+  "site_name": "Bat & Racket",
   "site_url": "https://amittanwar-7.github.io/smartkitchen-picks",
-  "affiliate_id": "amittanwa1",
+  "flipkart_affid": "amittanwa1",
+  "amazon_tag": "",
   "analytics_snippet": ""
 }

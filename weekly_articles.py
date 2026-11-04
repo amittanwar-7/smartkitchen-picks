@@ -11,9 +11,9 @@ GEN = ROOT / "generated.json"
 COUNT = int(os.environ.get("ARTICLE_COUNT", "3"))
 MODELS = ["llama-3.3-70b-versatile", "openai/gpt-oss-120b", "llama-3.1-8b-instant"]
 KEY = os.environ["GROQ_API_KEY"]
-SEEDS = ["best lunch box for", "how to clean", "steel bottle", "air fryer", "kitchen storage",
-         "vegetable chopper", "kitchen gadgets under", "pressure cooker", "tawa", "masala box",
-         "water bottle for", "kitchen organiser", "mixer grinder", "idli", "chapati"]
+SEEDS = ["badminton racket for", "badminton shoes for", "badminton shuttlecock", "badminton grip", "badminton string",
+         "how to play badminton", "cricket bat for", "cricket bat size", "kashmir willow bat", "english willow bat",
+         "cricket batting gloves", "cricket helmet for", "cricket kit for", "tennis ball cricket bat", "how to knock in"]
 
 
 def http(url, data=None, headers=None):
@@ -79,18 +79,18 @@ def pick_topics(n):
     cands = [c for c in dict.fromkeys(cands) if len(c.split()) >= 3 and c.lower() not in have]
     pillars = ", ".join(g["slug"] for g in GUIDES)
     out = chat([{"role": "user", "content":
-        f"From these Google India autosuggest queries about kitchen products, choose {n} specific, helpful, "
-        f"non-overlapping topics for buying-guide or how-to articles for Indian home cooks. Skip anything unsafe, "
-        f"branded, or already covered by these existing titles: {existing_text()[:1500]}\n\nQueries:\n" + "\n".join(cands[:150]) +
+        f"From these Google India autosuggest queries about cricket and badminton gear, choose {n} specific, helpful, "
+        f"non-overlapping topics for buying-guide or how-to articles for Indian players and parents. Skip anything unsafe, "
+        f"brand-specific, about players/matches/news, or already covered by these existing titles: {existing_text()[:1500]}\n\nQueries:\n" + "\n".join(cands[:150]) +
         f"\n\nReturn ONLY a JSON array of {n} objects: {{\"topic\": str, \"pillar\": one of [{pillars}]}}."}], 800)
     m = re.search(r"\[.*\]", out, re.S)
     return json.loads(m.group(0))[:n] if m else []
 
 
-PROMPT = """Write a helpful, original article for an Indian affiliate site about budget kitchen products.
+PROMPT = """Write a helpful, original article for an Indian affiliate site about cricket and badminton equipment.
 Topic: {topic}
 Rules: 700-1000 words, plain simple English, India-relevant. Cover how to choose or do it, what to check, mistakes, safety/care.
-Do NOT invent prices, product specs, ratings, brand claims, or claim personal testing. No product names.
+Do NOT invent prices, product specs, ratings, brand claims, or claim personal testing. No product names. Use approximate ranges only when they are widely accepted.
 Return ONLY JSON with keys:
 slug (lowercase-hyphens, ends with -india or similar, max 60 chars), title (max 70 chars), desc (max 155 chars),
 intro (list of 2 paragraphs), sections (list of 3-4 objects {{"h": str, "p": [paragraphs]}} and/or {{"h": str, "ul": [bullets]}}),

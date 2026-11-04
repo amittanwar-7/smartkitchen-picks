@@ -1,6 +1,6 @@
 """Fetch live product data (title, image, price) from the Flipkart Affiliate Search API into products.json.
 
-Runs in GitHub Actions with FK_AFFILIATE_ID / FK_AFFILIATE_TOKEN from repository secrets.
+Runs in GitHub Actions with FK_AFFILIATE_TOKEN from repository secrets; the affiliate ID comes from config.json.
 Never fails the build: if credentials are missing or the API errors, the previous products.json is kept.
 """
 import datetime, json, os, time, urllib.parse, urllib.request
@@ -82,7 +82,7 @@ def parse(data, affid):
 
 def main():
     load_env()
-    affid = os.environ.get("FK_AFFILIATE_ID") or json.loads((ROOT / "config.json").read_text(encoding="utf-8"))["affiliate_id"]
+    affid = json.loads((ROOT / "config.json").read_text(encoding="utf-8"))["flipkart_affid"]
     token = os.environ.get("FK_AFFILIATE_TOKEN")
     if not token:
         print("FK_AFFILIATE_TOKEN not set; keeping existing products.json")
