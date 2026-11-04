@@ -1,5 +1,5 @@
-"""Weekly job: pick new topics from Google autosuggest, write articles with Google Gemini,
-append them to generated.json. Runs in GitHub Actions with the GEMINI_API_KEY secret."""
+"""Weekly job: pick new topics from Google autosuggest, write articles with Groq,
+append them to generated.json. Runs in GitHub Actions with the GROQ_API_KEY secret."""
 import json, os, re, sys, time, urllib.error, urllib.parse, urllib.request
 from pathlib import Path
 
@@ -9,8 +9,8 @@ from content import GUIDES
 ROOT = Path(__file__).parent
 GEN = ROOT / "generated.json"
 COUNT = int(os.environ.get("ARTICLE_COUNT", "3"))
-MODELS = ["gemini-3.6-flash", "gemini-3.5-flash-lite", "gemini-3.1-flash-lite"]
-KEY = os.environ["GEMINI_API_KEY"]
+MODELS = ["llama-3.3-70b-versatile", "openai/gpt-oss-120b", "llama-3.1-8b-instant"]
+KEY = os.environ["GROQ_API_KEY"]
 SEEDS = ["best lunch box for", "how to clean", "steel bottle", "air fryer", "kitchen storage",
          "vegetable chopper", "kitchen gadgets under", "pressure cooker", "tawa", "masala box",
          "water bottle for", "kitchen organiser", "mixer grinder", "idli", "chapati"]
@@ -30,23 +30,20 @@ def suggest(q):
         return []
 
 
-def chat(messages, max_tokens=8000):
-    body = json.dumps({
-        "contents": [{"parts": [{"text": messages[0]["content"]}]}],
-        "generationConfig": {"temperature": 0.7, "maxOutputTokens": max_tokens},
-    }).encode()
-    hdr = {"x-goog-api-key": KEY, "Content-Type": "application/json"}
+def chat(messages, max_tokens=6000):
+    hdr = {"Authorization": "Bearer " + KEY, "Content-Type": "application/json", "User-Agent": "smartkitchen-bot/1.0"}
     for i in range(6):
-        url = f"https://generativelanguage.googleapis.com/v1beta/models/{MODELS[i % len(MODELS)]}:generateContent"
+        body = json.dumps({"model": MODELS[i % len(MODELS)], "messages": messages,
+                           "temperature": 0.7, "max_tokens": max_tokens}).encode()
         raw = ""
         try:
-            raw = http(url, body, hdr)
-            return json.loads(raw)["candidates"][0]["content"]["parts"][0]["text"]
+            raw = http("https://api.groq.com/openai/v1/chat/completions", body, hdr)
+            return json.loads(raw)["choices"][0]["message"]["content"]
         except urllib.error.HTTPError as ex:
             print("::error::model call failed:", ex.code, ex.read().decode("utf-8", "ignore")[:300].replace("\n", " "), flush=True)
         except Exception as ex:
             print("::error::model call failed:", str(ex)[:200], "| body:", raw[:200].replace("\n", " "), flush=True)
-        time.sleep(15 * (i + 1))
+        time.sleep(20 * (i + 1))
     return ""
 
 def load_gen():
