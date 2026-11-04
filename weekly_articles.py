@@ -1,5 +1,5 @@
-"""Weekly job: pick new topics from Google autosuggest, write articles with GitHub Models,
-append them to generated.json. Runs in GitHub Actions with GITHUB_TOKEN (models: read)."""
+"""Weekly job: pick new topics from Google autosuggest, write articles with Google Gemini,
+append them to generated.json. Runs in GitHub Actions with the GEMINI_API_KEY secret."""
 import json, os, re, sys, time, urllib.error, urllib.parse, urllib.request
 from pathlib import Path
 
@@ -9,8 +9,8 @@ from content import GUIDES
 ROOT = Path(__file__).parent
 GEN = ROOT / "generated.json"
 COUNT = int(os.environ.get("ARTICLE_COUNT", "3"))
-MODEL = os.environ.get("MODEL", "openai/gpt-4.1")
-TOKEN = os.environ["GITHUB_TOKEN"]
+MODEL = os.environ.get("MODEL", "gemini-2.5-flash")
+KEY = os.environ["GEMINI_API_KEY"]
 SEEDS = ["best lunch box for", "how to clean", "steel bottle", "air fryer", "kitchen storage",
          "vegetable chopper", "kitchen gadgets under", "pressure cooker", "tawa", "masala box",
          "water bottle for", "kitchen organiser", "mixer grinder", "idli", "chapati"]
@@ -30,23 +30,24 @@ def suggest(q):
         return []
 
 
-def chat(messages, max_tokens=4000):
-    body = json.dumps({"model": MODEL, "messages": messages, "temperature": 0.7, "max_tokens": max_tokens}).encode()
-    hdr = {"Authorization": "Bearer " + TOKEN, "Content-Type": "application/json",
-           "Accept": "application/vnd.github+json", "X-GitHub-Api-Version": "2022-11-28"}
-    for i in range(3):
+def chat(messages, max_tokens=8000):
+    body = json.dumps({
+        "contents": [{"parts": [{"text": messages[0]["content"]}]}],
+        "generationConfig": {"temperature": 0.7, "maxOutputTokens": max_tokens},
+    }).encode()
+    hdr = {"x-goog-api-key": KEY, "Content-Type": "application/json"}
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/{MODEL}:generateContent"
+    for i in range(4):
         raw = ""
         try:
-            raw = http("https://models.github.ai/inference/chat/completions", body, hdr)
-            return json.loads(raw)["choices"][0]["message"]["content"]
+            raw = http(url, body, hdr)
+            return json.loads(raw)["candidates"][0]["content"]["parts"][0]["text"]
         except urllib.error.HTTPError as ex:
             print("::error::model call failed:", ex.code, ex.read().decode("utf-8", "ignore")[:300].replace("\n", " "), flush=True)
-            time.sleep(10 * (i + 1))
         except Exception as ex:
             print("::error::model call failed:", str(ex)[:200], "| body:", raw[:200].replace("\n", " "), flush=True)
-            time.sleep(10 * (i + 1))
+        time.sleep(15 * (i + 1))
     return ""
-
 
 def load_gen():
     return json.loads(GEN.read_text(encoding="utf-8")) if GEN.exists() else []
