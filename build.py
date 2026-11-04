@@ -5,6 +5,15 @@ from urllib.parse import quote_plus
 
 from content import GUIDES
 from clusters import CLUSTERS
+import json as _json
+from pathlib import Path as _Path
+
+_gen = _Path(__file__).parent / "generated.json"
+if _gen.exists():
+    for _a in _json.loads(_gen.read_text(encoding="utf-8")):
+        _a["faq"] = [tuple(f) for f in _a["faq"]]
+        _a["cta"] = tuple(_a["cta"])
+        CLUSTERS.append(_a)
 
 ROOT = Path(__file__).parent
 cfg = json.loads((ROOT / "config.json").read_text(encoding="utf-8"))
