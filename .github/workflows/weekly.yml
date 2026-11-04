@@ -7,7 +7,6 @@ on:
 
 permissions:
   contents: write
-  models: read
   actions: write
 
 jobs:
@@ -19,9 +18,9 @@ jobs:
         with:
           python-version: "3.12"
       - run: pip install -r requirements.txt
-      - name: Write new articles with GitHub Models
+      - name: Write new articles with Gemini
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         run: python weekly_articles.py
       - name: Verify the site still builds
         run: python build.py
